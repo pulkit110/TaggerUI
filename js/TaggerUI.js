@@ -187,6 +187,12 @@ var fluid_1_4 = fluid_1_4 || {};
             canvas.onmouseup = taggerMouseUp;
             canvas.onmousemove = taggerMouseMove;
         }
+        
+        that.reset = function() {
+			canvas.onmousedown = null;
+			canvas.onmouseup = null;
+			canvas.onmousemove = null;
+		}
 
         return that;
     }
