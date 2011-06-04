@@ -171,13 +171,18 @@ var fluid_1_4 = fluid_1_4 || {};
 					drawImage (context, image, resizeFactor);
 					boxes2[i].draw(context, true);
 					drawAllBoxes(false);
+					
 					annotation = document.createElement("div");
 					annotation.style.position = 'absolute';
-					var toppos = (offsetY + boxes2[i].y) + "px";
 					annotation.style.top = (offsetY + boxes2[i].y) + "px";
 					annotation.style.left = offsetX + boxes2[i].x + "px";
-					annotation.style.backgroundColor = 'yellow';
+					annotation.style.width = boxes2[i].w + 'px';
+					annotation.style.lineHeight = boxes2[i].h + 'px';
+					annotation.className += ' annotation';
+
 					annotation.innerHTML = boxes2[i].tag;
+					
+					
 					m_container.get()[0].appendChild(annotation);
 				}
 				break;
