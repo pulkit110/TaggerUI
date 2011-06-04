@@ -53,7 +53,10 @@ var fluid_1_4 = fluid_1_4 || {};
     };
 
 
-    var canvas
+	var boxes2 = [];
+
+	var canvasElem;
+    var canvas;
     var context;
     var WIDTH;
     var HEIGHT;
@@ -64,12 +67,16 @@ var fluid_1_4 = fluid_1_4 || {};
     var taggerStarted;
     var rectX;
     var rectY;
+    var m_container;
 
     var mx, my; // mouse coordinates
 
-	var offsetx, offsety;
+	var offsetX, offsetY;
 	
 	var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
+
+	var blurStyle = 'rgba(255,255,255,0.4)';
+	var prevRectIndex = -1;
 
     // The active tool instance.
     var tool;
@@ -77,8 +84,8 @@ var fluid_1_4 = fluid_1_4 || {};
     // Sets mx,my to the mouse position relative to the canvas
     // unfortunately this can be tricky, we have to worry about padding and borders
 	function getMouse(e){
-	    var element = canvas,
-	    offsetX = 0,
+	    var element = canvas;
+	    offsetX = 0;
 	    offsetY = 0;
 	
 	    if (element.offsetParent){
@@ -115,7 +122,7 @@ var fluid_1_4 = fluid_1_4 || {};
 	    }
 	    
 	    getMouse(e);
-	    	
+
 	    var x = Math.min(mx, rectX),
 	    	y = Math.min(my, rectY),
 	    	w = Math.abs(mx - rectX),
@@ -127,8 +134,13 @@ var fluid_1_4 = fluid_1_4 || {};
     taggerMouseUp = function(e){
     	getMouse(e);
         if (taggerStarted){
+        	var tag = prompt("Enter any tag");
+			if (tag != null && tag != "") {
+				addRect (rectX, rectY, Math.abs(mx - rectX), Math.abs(my - rectY), blurStyle, tag);
+			}
+			
         	taggerStarted = false;
-            taggerMouseMove(e);            
+            taggerMouseMove(e);
         }
     }
 
@@ -143,8 +155,96 @@ var fluid_1_4 = fluid_1_4 || {};
 	    context.strokeRect(x, y, w, h);	
 	}
 	
+	var annotation = false;
+	annotatedMouseMove = function(e){
+	    getMouse(e);
+
+		var backgroundDrew = false;
+
+	    var l = boxes2.length;
+	    var i = 0;
+		for (i = 0; i < l; i++) {
+			if (mx > boxes2[i].x && mx < boxes2[i].x+boxes2[i].w &&  my > boxes2[i].y && my < boxes2[i].y+boxes2[i].h) {
+				if (i != prevRectIndex) {
+					prevRectIndex = i;
+					context.clearRect(0, 0, canvas.width, canvas.height);
+					drawImage (context, image, resizeFactor);
+					boxes2[i].draw(context, true);
+					drawAllBoxes(false);
+					annotation = document.createElement("div");
+					annotation.style.position = 'absolute';
+					var toppos = (offsetY + boxes2[i].y) + "px";
+					annotation.style.top = (offsetY + boxes2[i].y) + "px";
+					annotation.style.left = offsetX + boxes2[i].x + "px";
+					annotation.style.backgroundColor = 'yellow';
+					annotation.innerHTML = boxes2[i].tag;
+					m_container.get()[0].appendChild(annotation);
+				}
+				break;
+			}
+		}
+		
+		if (i == l && prevRectIndex != -1) {
+			context.clearRect(0, 0, canvas.width, canvas.height);
+			drawImage (context, image, resizeFactor);
+			drawAllBoxes(false);
+			prevRectIndex = -1;
+			if(annotation) {
+				m_container.get()[0].removeChild(annotation);
+				annotation = false;
+			}
+		}
+	}
+	
+	function drawAllBoxes(isFilled) {
+		var l = boxes2.length;
+		for (var i = 0; i < l; i++) {
+			boxes2[i].draw(context, isFilled);
+		}
+	}
+	
 	function drawImage(imageCanvasContext, image, resizeFactor) {
 		imageCanvasContext.drawImage(image, imageX, imageY, image.width/resizeFactor, image.height/resizeFactor);
+	}
+	
+	function Box2() {
+		this.x = 0;
+		this.y = 0;
+		this.w = 1; // default width and height?
+		this.h = 1;
+		this.fill = '#444444';
+		this.tag = "default tag";
+	}
+	
+	// New methods on the Box class
+	Box2.prototype = {
+		draw: function(context, isFilled) {
+			context.fillStyle = this.fill;
+				
+			// We can skip the drawing of elements that have moved off the screen:
+			if (this.x > WIDTH || this.y > HEIGHT)
+				return;
+			if (this.x + this.w < 0 || this.y + this.h < 0)
+				return;
+	
+			if (isFilled) {
+				context.fillRect(this.x, this.y, this.w, this.h);
+			} else {
+				context.strokeRect(this.x,this.y,this.w,this.h);
+			}
+		} // end draw
+	}
+	
+	//Initialize a new Box and add it
+	function addRect(x, y, w, h, fill, tag) {
+		var rect = new Box2;
+		rect.x = x;
+		rect.y = y;
+		rect.w = w
+		rect.h = h;
+		rect.fill = fill;
+		rect.tag = tag;
+		boxes2.push(rect);
 	}
 	
     /**
@@ -155,10 +255,13 @@ var fluid_1_4 = fluid_1_4 || {};
      */
     fluid.taggerUI = function(container, options){
         var that = fluid.initView("fluid.taggerUI", container, options);
-
+        
+        m_container = container;
+        
         that.init = function(a_canvas, a_resizeFactor, a_image, a_imageX, a_imageY){
 
-            canvas = a_canvas;
+			canvasElem = a_canvas;
+            canvas = a_canvas.get()[0];
             HEIGHT = canvas.height;
             WIDTH = canvas.width;
             context = canvas.getContext('2d');
@@ -186,12 +289,20 @@ var fluid_1_4 = fluid_1_4 || {};
             canvas.onmousedown = taggerMouseDown;
             canvas.onmouseup = taggerMouseUp;
             canvas.onmousemove = taggerMouseMove;
+
         }
         
         that.reset = function() {
 			canvas.onmousedown = null;
 			canvas.onmouseup = null;
 			canvas.onmousemove = null;
+		}
+		
+		that.showAnnotations = function() {
+			context.clearRect(0, 0, canvas.width, canvas.height);
+			drawImage (context, image, resizeFactor);
+			drawAllBoxes(false);
+			canvas.onmousemove = annotatedMouseMove;
 		}
 
         return that;
