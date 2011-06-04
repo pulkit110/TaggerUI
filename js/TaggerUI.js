@@ -172,6 +172,13 @@ var fluid_1_4 = fluid_1_4 || {};
 					boxes2[i].draw(context, true);
 					drawAllBoxes(false);
 					
+					// Remove previously shown annotation (important when two annotations overlap)
+					if (annotation) {
+						m_container.get()[0].removeChild(annotation);
+						annotation = false;
+					}
+					
+					// Show annotation on mouse over
 					annotation = document.createElement("div");
 					annotation.style.position = 'absolute';
 					annotation.style.top = (offsetY + boxes2[i].y) + "px";
@@ -276,6 +283,12 @@ var fluid_1_4 = fluid_1_4 || {};
             imageY = a_imageY;
             taggerStarted = false;
 
+			var temo = that.options.strokeStyle;
+			var tee22mo = that.options.lineWidth;
+			 
+			context.strokeStyle = that.options.strokeStyle;
+			context.lineWidth = that.options.lineWidth;
+			
 			//fixes a problem where double clicking causes text to get selected on the canvas
 			canvas.onselectstart = function () {
 				return false;
@@ -298,6 +311,15 @@ var fluid_1_4 = fluid_1_4 || {};
         }
         
         that.reset = function() {
+        	boxes2 = [];
+        	if (canvas) {
+				canvas.onmousedown = null;
+				canvas.onmouseup = null;
+				canvas.onmousemove = null;
+			}
+		}
+		
+		that.doneTagging = function() {
 			canvas.onmousedown = null;
 			canvas.onmouseup = null;
 			canvas.onmousemove = null;
@@ -313,8 +335,10 @@ var fluid_1_4 = fluid_1_4 || {};
         return that;
     }
     
-    fluid.defaults("fluid.cropperUI", {
-        gradeNames: "fluid.viewComponent"
+    fluid.defaults("fluid.taggerUI", {
+        gradeNames: "fluid.viewComponent",
+        lineWidth: 1,
+        strokeStyle: 'white'
     });
     
 })(jQuery, fluid_1_4);
