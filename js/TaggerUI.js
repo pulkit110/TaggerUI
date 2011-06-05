@@ -68,6 +68,7 @@ var fluid_1_4 = fluid_1_4 || {};
     var rectX;
     var rectY;
     var m_container;
+    var annotationNbUpdater = false;
 
     var mx, my; // mouse coordinates
 
@@ -76,8 +77,9 @@ var fluid_1_4 = fluid_1_4 || {};
 	var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
 
 	var blurStyle = 'rgba(255,255,255,0.4)';
+	var strokeStyle;
 	var prevRectIndex = -1;
-
+	
     // The active tool instance.
     var tool;
 
@@ -149,7 +151,18 @@ var fluid_1_4 = fluid_1_4 || {};
 					rectW = -rectW;
 				}
 				
-				addRect (rectX, rectY, rectW, rectH, blurStyle, tag);
+				if (rectW == 0 || rectH == 0) {
+					alert("Error creating tag! Please specify non-zero height and width");
+				} else {
+					addRect (rectX, rectY, rectW, rectH, blurStyle, tag);
+					if (annotationNbUpdater) {
+						annotationNbUpdater(boxes2.length);
+					}
+				}
+
+				// Clear the canvas and draw image on canvas
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				drawImage (context, image, resizeFactor);				
 			}
 			
         	taggerStarted = false;
@@ -169,6 +182,7 @@ var fluid_1_4 = fluid_1_4 || {};
 	}
 	
 	var annotation = false;
+	var annotationRemove = false;
 	annotatedMouseMove = function(e){
 	    getMouse(e);
 
@@ -190,6 +204,10 @@ var fluid_1_4 = fluid_1_4 || {};
 						m_container.get()[0].removeChild(annotation);
 						annotation = false;
 					}
+					if(annotationRemove) {
+						m_container.get()[0].removeChild(annotationRemove);
+						annotationRemove = false;
+					}
 					
 					// Show annotation on mouse over
 					annotation = document.createElement("div");
@@ -198,13 +216,25 @@ var fluid_1_4 = fluid_1_4 || {};
 					annotation.style.left = offsetX + boxes2[i].x + "px";
 					annotation.style.width = boxes2[i].w + 'px';
 					annotation.style.lineHeight = boxes2[i].h + 'px';
-					annotation.className += ' annotation';
+					annotation.className += ' fl-tagger-annotation';
 
 					annotation.innerHTML = boxes2[i].tag;
 					
+					annotationRemove = document.createElement("button");
+					annotationRemove.style.position = 'absolute';
+					annotationRemove.style.top = offsetY + boxes2[i].y + "px";
+					annotationRemove.style.left = offsetX + boxes2[i].x + boxes2[i].w - 20 + "px";
+					annotationRemove.className += ' annotation';
+					annotationRemove.className += ' fl-tagger-annotation-action-remove';
+					
+					annotationRemove.onclick = function() {
+						removeAnnotation(i);
+					};
 					
 					m_container.get()[0].appendChild(annotation);
+					m_container.get()[0].appendChild(annotationRemove);
 				}
+				
 				break;
 			}
 		}
@@ -218,7 +248,19 @@ var fluid_1_4 = fluid_1_4 || {};
 				m_container.get()[0].removeChild(annotation);
 				annotation = false;
 			}
+			if(annotationRemove) {
+				m_container.get()[0].removeChild(annotationRemove);
+				annotationRemove = false;
+			}
 		}
+	}
+	
+	var removeAnnotation = function(i) {
+		boxes2.splice(i,1);
+		if (annotationNbUpdater) {
+			annotationNbUpdater(boxes2.length);
+		}
+		canvasElem.mousemove();
 	}
 	
 	function drawAllBoxes(isFilled) {
@@ -245,7 +287,7 @@ var fluid_1_4 = fluid_1_4 || {};
 	Box2.prototype = {
 		draw: function(context, isFilled) {
 			context.fillStyle = this.fill;
-				
+			context.strokeStyle = strokeStyle;
 			// We can skip the drawing of elements that have moved off the screen:
 			if (this.x > WIDTH || this.y > HEIGHT)
 				return;
@@ -257,9 +299,10 @@ var fluid_1_4 = fluid_1_4 || {};
 			} else {
 				context.strokeRect(this.x,this.y,this.w,this.h);
 			}
+			
 		} // end draw
 	}
-	
+
 	//Initialize a new Box and add it
 	function addRect(x, y, w, h, fill, tag) {
 		var rect = new Box2;
@@ -280,6 +323,7 @@ var fluid_1_4 = fluid_1_4 || {};
      */
     fluid.taggerUI = function(container, options){
         var that = fluid.initView("fluid.taggerUI", container, options);
+        annotationNbUpdater = that.options.annotationNbUpdater;
         
         m_container = container;
         
@@ -296,7 +340,8 @@ var fluid_1_4 = fluid_1_4 || {};
             imageY = a_imageY;
             taggerStarted = false;
 			 
-			context.strokeStyle = that.options.strokeStyle;
+			strokeStyle = that.options.strokeStyle;
+			context.strokeStyle = strokeStyle;
 			context.lineWidth = that.options.lineWidth;
 			
 			//fixes a problem where double clicking causes text to get selected on the canvas
@@ -357,6 +402,13 @@ var fluid_1_4 = fluid_1_4 || {};
     
     fluid.defaults("fluid.taggerUI", {
         gradeNames: "fluid.viewComponent",
+        styles: {
+        	remove: "fl-image-editor-annotation-action-remove"
+        },
+        status: {
+        	remove: "Press Delete key to remove annotation" 
+        },
+        annotationNbUpdater: false,
         lineWidth: 1,
         strokeStyle: 'white'
     });
