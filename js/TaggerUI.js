@@ -136,7 +136,20 @@ var fluid_1_4 = fluid_1_4 || {};
         if (taggerStarted){
         	var tag = prompt("Enter any tag");
 			if (tag != null && tag != "") {
-				addRect (rectX, rectY, Math.abs(mx - rectX), Math.abs(my - rectY), blurStyle, tag);
+				
+				var rectH = my - rectY;
+				var rectW = mx - rectX;
+				
+				if ( rectH < 0) {
+					rectY = my;
+					rectH = -rectH;
+				}
+				if (rectW < 0) {
+					rectX = mx;
+					rectW = -rectW;
+				}
+				
+				addRect (rectX, rectY, rectW, rectH, blurStyle, tag);
 			}
 			
         	taggerStarted = false;
@@ -282,9 +295,6 @@ var fluid_1_4 = fluid_1_4 || {};
             imageX = a_imageX;
             imageY = a_imageY;
             taggerStarted = false;
-
-			var temo = that.options.strokeStyle;
-			var tee22mo = that.options.lineWidth;
 			 
 			context.strokeStyle = that.options.strokeStyle;
 			context.lineWidth = that.options.lineWidth;
@@ -330,6 +340,16 @@ var fluid_1_4 = fluid_1_4 || {};
 			drawImage (context, image, resizeFactor);
 			drawAllBoxes(false);
 			canvas.onmousemove = annotatedMouseMove;
+		}
+		
+		that.hideAnnotations = function() {
+			context.clearRect(0, 0, canvas.width, canvas.height);
+			drawImage (context, image, resizeFactor);
+			canvas.onmousemove = null;
+		}
+		
+		that.getNbAnnotations = function() {
+			return boxes2.length;
 		}
 
         return that;
