@@ -415,6 +415,37 @@ var fluid_1_4 = fluid_1_4 || {};
 			HEIGHT = newH;
             WIDTH = newW;
 		}
+		
+		that.adjustTagsForCrop = function(newW, newH, a_resizeFactor, a_image, a_imageX, a_imageY, croppingDimensions) {
+			image = a_image;
+			resizeFactor = a_resizeFactor;
+			imageX = a_imageX;
+			imageY = a_imageY;
+			
+		    var l = boxes2.length;
+		    var i = 0;
+			for (i = 0; i < l; i++) {
+				if (boxes2[i].x >= croppingDimensions.x && boxes2[i].x+boxes2[i].w <= croppingDimensions.x + croppingDimensions.w &&
+					boxes2[i].y >= croppingDimensions.y && boxes2[i].y+boxes2[i].h <= croppingDimensions.y + croppingDimensions.h ) {
+						boxes2[i].w *= newW/croppingDimensions.w;
+						boxes2[i].h *= newH/croppingDimensions.h;
+						boxes2[i].x = (boxes2[i].x - croppingDimensions.x) * newW/croppingDimensions.w;
+						boxes2[i].y = (boxes2[i].y - croppingDimensions.y) * newH/croppingDimensions.h;
+				} else {
+					boxes2.splice(i,1);
+					--l;
+					--i;
+				}
+
+			}
+			
+			if (annotationNbUpdater) {
+				annotationNbUpdater(boxes2.length);
+			}
+			
+			HEIGHT = newH;
+            WIDTH = newW;
+		}
 
         return that;
     }
