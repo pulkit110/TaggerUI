@@ -331,15 +331,15 @@ var fluid_1_4 = fluid_1_4 || {};
 
 			canvasElem = a_canvas;
             canvas = a_canvas.get()[0];
-            HEIGHT = canvas.height;
-            WIDTH = canvas.width;
             context = canvas.getContext('2d');
             resizeFactor = a_resizeFactor;
             image = a_image;
             imageX = a_imageX;
             imageY = a_imageY;
             taggerStarted = false;
-			 
+            WIDTH = canvas.width;
+            HEIGHT = canvas.height;
+            
 			strokeStyle = that.options.strokeStyle;
 			context.strokeStyle = strokeStyle;
 			context.lineWidth = that.options.lineWidth;
@@ -395,6 +395,25 @@ var fluid_1_4 = fluid_1_4 || {};
 		
 		that.getNbAnnotations = function() {
 			return boxes2.length;
+		}
+		
+		that.adjustTagsForResize = function(newW, newH, a_resizeFactor, a_image, a_imageX, a_imageY) {
+			image = a_image;
+			resizeFactor = a_resizeFactor;
+			imageX = a_imageX;
+			imageY = a_imageY;
+			
+		    var l = boxes2.length;
+		    var i = 0;
+			for (i = 0; i < l; i++) {
+				boxes2[i].w *= newW/WIDTH;
+				boxes2[i].h *= newH/HEIGHT;
+				boxes2[i].x *= newW/WIDTH;
+				boxes2[i].y *= newH/HEIGHT;
+			}
+			
+			HEIGHT = newH;
+            WIDTH = newW;
 		}
 
         return that;
