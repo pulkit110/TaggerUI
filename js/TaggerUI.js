@@ -53,7 +53,7 @@ var fluid_1_4 = fluid_1_4 || {};
 	var prevRectIndex = -1;
 	
 
-	function Box2() {
+	function Box() {
 		this.x = 0;
 		this.y = 0;
 		this.w = 1; // default width and height?
@@ -63,7 +63,7 @@ var fluid_1_4 = fluid_1_4 || {};
 	}
 	
 	// New methods on the Box class
-	Box2.prototype = {
+	Box.prototype = {
 		draw: function (context, isFilled) {
 			context.fillStyle = this.fill;
 			context.strokeStyle = strokeStyle;
@@ -85,7 +85,7 @@ var fluid_1_4 = fluid_1_4 || {};
 
 	//Initialize a new Box and add it
 	var addRect = function (x, y, w, h, fill, tag) {
-		var rect = new Box2();
+		var rect = new Box();
 		rect.x = x;
 		rect.y = y;
 		rect.w = w;
@@ -349,6 +349,9 @@ var fluid_1_4 = fluid_1_4 || {};
 				canvas.onmousedown = null;
 				canvas.onmouseup = null;
 				canvas.onmousemove = null;
+			}
+			if (annotationNbUpdater) {
+				annotationNbUpdater(boxes.length);
 			}
 		};
 		
