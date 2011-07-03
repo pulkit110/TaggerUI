@@ -35,8 +35,11 @@ var fluid_1_4 = fluid_1_4 || {};
     var imageX;
     var imageY;
     var taggerStarted;
-    var rectX;
-    var rectY;
+    var tagX;
+    var tagY;
+    var tagW;
+    var tagH;
+    var tagText;
     var m_container;
 
     var mx, my; // mouse coordinates
@@ -137,14 +140,6 @@ var fluid_1_4 = fluid_1_4 || {};
 	    my = e.pageY - offsetY;
 	};
 
-    var taggerMouseDown = function (e) {
-        getMouse(e);
-        
-        taggerStarted = true;
-        rectX = mx;
-        rectY = my;
-    };
-
 	var drawImage = function (imageCanvasContext, image, resizeFactor) {
 		imageCanvasContext.drawImage(image, imageX, imageY, image.width / resizeFactor, image.height / resizeFactor);
 	};
@@ -159,7 +154,23 @@ var fluid_1_4 = fluid_1_4 || {};
 	
 	    context.strokeRect(x, y, w, h);	
 	};
-
+	
+	var updateAnnotationHeight = function (that, newHeight) {
+		that.events.onChangeHeight.fire(newHeight);
+	};
+	
+	var updateAnnotationWidth = function (that, newWidth) {
+		that.events.onChangeWidth.fire(newWidth);
+	};
+	
+	var updateAnnotationLocationX = function (that, newLocationX) {
+		that.events.onChangeLocationX.fire(newLocationX);
+	};
+	
+	var updateAnnotationLocationY = function (that, newLocationY) {
+		that.events.onChangeLocationY.fire(newLocationY);
+	};
+	
     /**
      * Instantiates a new TaggerUI component.
      * 
@@ -177,6 +188,12 @@ var fluid_1_4 = fluid_1_4 || {};
 		},
 		events: {
 			onAnnotationNbChange: null,
+			onAnnotationAdd: null,
+			onAnnotationRemove: null,
+			onChangeHeight: null,
+			onChangeWidth: null,
+			onChangeLocationX: null,
+			onChangeLocationY: null
 		},
 		lineWidth: 1,
 		strokeStyle: 'white',
@@ -186,6 +203,16 @@ var fluid_1_4 = fluid_1_4 || {};
     fluid.taggerUI.postInit = function(that) {
     	m_container = that.container;
     	
+    	var taggerMouseDown = function (e) {
+		    getMouse(e);
+		    
+		    taggerStarted = true;
+		    tagX = mx;
+		    that.events.onChangeLocationX.fire(tagX);
+		    tagY = my;
+		    that.events.onChangeLocationY.fire(tagY);
+		};
+    
     	var taggerMouseMove = function (e) {
 	    
 		    if (!taggerStarted) {
@@ -193,42 +220,51 @@ var fluid_1_4 = fluid_1_4 || {};
 		    }
 		    getMouse(e);
 		    
-		    var x = Math.min(mx, rectX);
-			var y = Math.min(my, rectY);
-			var w = Math.abs(mx - rectX);
-			var h = Math.abs(my - rectY);
-	
+		    var x = Math.min(mx, tagX);
+		    that.events.onChangeLocationX.fire(x);
+			var y = Math.min(my, tagY);
+			that.events.onChangeLocationY.fire(y);
+			var w = Math.abs(mx - tagX);
+			that.events.onChangeWidth.fire(w);
+			
+			var h = Math.abs(my - tagY);
+			that.events.onChangeHeight.fire(h);
+
 			mainDraw(x, y, w, h);	    
 		};
 	
 	    var taggerMouseUp = function (e) {
 			getMouse(e);
 			if (taggerStarted) {
-				var tag = prompt("Enter any tag");
+				tagH = my - tagY;
+				tagW = mx - tagX;
+				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+				/*
+				//var tag = prompt("Enter any tag");
 				if (tag !== null && tag !== "") {
-					var rectH = my - rectY;
-					var rectW = mx - rectX;
-					if (rectH < 0) {
-						rectY = my;
-						rectH = -rectH;
+					
+					if (tagH < 0) {
+						tagY = my;
+						tagH = -tagH;
 					}
-					if (rectW < 0) {
-						rectX = mx;
-						rectW = -rectW;
+					if (tagW < 0) {
+						tagX = mx;
+						tagW = -tagW;
 					}
-					if (rectW === 0 || rectH === 0) {
+					if (tagW === 0 || tagH === 0) {
 						alert("Error creating tag! Please specify non-zero height and width");
 					} else {
-						addAnnotation(rectX, rectY, rectW, rectH, tag, that);
+						addAnnotation(tagX, tagY, tagW, tagH, tag, that);
+						that.events.onAnnotationAdd.fire(annotationList[annotationList.length - 1].tag);
 						that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
 					}
 
 					// Clear the canvas and draw image on canvas
 					context.clearRect(0, 0, canvas.width, canvas.height);
 					drawImage(context, image, resizeFactor);
-				}
-				taggerStarted = false;
-				taggerMouseMove(e);
+				}*/
+				//taggerStarted = false;
+				//taggerMouseMove(e);
 			}
 		};
 	
@@ -237,7 +273,8 @@ var fluid_1_4 = fluid_1_4 || {};
 		
 		var removeAnnotation = function (i) {
 			annotationList.splice(i, 1);
-			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
+			that.events.onAnnotationRemove.fire(i);
+			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length + 1);
 			canvasElem.mousemove();
 		};
 		
@@ -317,6 +354,7 @@ var fluid_1_4 = fluid_1_4 || {};
 				}
 			}
 		};
+		
     	that.init = function (a_canvas, a_resizeFactor, a_image, a_imageX, a_imageY) {
 
 			canvasElem = a_canvas;
@@ -334,6 +372,24 @@ var fluid_1_4 = fluid_1_4 || {};
 			context.strokeStyle = strokeStyle;
 			context.lineWidth = that.options.lineWidth;
 			
+			that.cropper = fluid.cropperUI(that.container);
+			
+			that.cropper.events.onChangeHeight.addListener(function (newHeight) {
+				updateAnnotationHeight(that, newHeight);
+			});
+			
+			that.cropper.events.onChangeWidth.addListener(function (newWidth) {
+				updateAnnotationWidth(that, newWidth);
+			});
+			
+			that.cropper.events.onChangeLocationX.addListener(function (newLocationX) {
+				updateAnnotationLocationX(that, newLocationX);
+			});
+			
+			that.cropper.events.onChangeLocationY.addListener(function (newLocationY) {
+				updateAnnotationLocationY(that, newLocationY);
+			});
+		
 			//fixes a problem where double clicking causes text to get selected on the canvas
 			canvas.onselectstart = function () {
 				return false;
@@ -366,6 +422,31 @@ var fluid_1_4 = fluid_1_4 || {};
 			that.events.onAnnotationNbChange.fire(annotationList.length, oldLength);
 		};
 		
+		that.confirmTagAdd = function (tagText) {
+			var croppingReturnValues = that.cropper.reset(true);
+			var tagDimensions = croppingReturnValues[1];
+			tagX = tagDimensions.x;
+			tagY = tagDimensions.y;
+			tagW = tagDimensions.w;
+			tagH = tagDimensions.h;
+			
+			if (tagH < 0) {
+				tagY = my;
+				tagH = -tagH;
+			}
+			if (tagW < 0) {
+				tagX = mx;
+				tagW = -tagW;
+			}
+			addAnnotation(tagX, tagY, tagW, tagH, tagText, that);
+			that.events.onAnnotationAdd.fire(annotationList[annotationList.length - 1].tag);
+			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
+
+			// Clear the canvas and draw image on canvas
+			context.clearRect(0, 0, canvas.width, canvas.height);
+			drawImage(context, image, resizeFactor);
+		};
+		
 		that.doneTagging = function () {
 			canvas.onmousedown = null;
 			canvas.onmouseup = null;
@@ -387,6 +468,30 @@ var fluid_1_4 = fluid_1_4 || {};
 		
 		that.getNbAnnotations = function () {
 			return annotationList.length;
+		};
+		
+		that.getTagList = function () {
+			var tagList = new Array(annotationList.length);
+			for (var i = 0; i < annotationList.length; ++i) {
+				tagList[i] = annotationList[i].tag;
+			}
+			return tagList;
+		};
+		
+		that.setLocationX = function (newLocationX) {
+			return that.cropper.setLocationX(newLocationX);
+		};
+        
+        that.setLocationY = function (newLocationY) {
+			return that.cropper.setLocationY(newLocationY);
+		};
+		
+		that.setWidth = function (newWidth, isFixedRatioOn) {
+			return that.cropper.setWidth(newWidth, false);
+		};
+		
+		that.setHeight = function (newHeight, isFixedRatioOn) {
+			return that.cropper.setHeight(newHeight, false);
 		};
 		
 		that.adjustTagsForResize = function (newW, newH, a_resizeFactor, a_image, a_imageX, a_imageY) {
