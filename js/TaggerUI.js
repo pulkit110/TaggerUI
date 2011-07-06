@@ -51,6 +51,9 @@ var fluid_1_4 = fluid_1_4 || {};
 	var blurStyle = 'rgba(255,255,255,0.4)';
 	var strokeStyle;
 	var prevRectIndex = -1;
+	var annotation = false;
+	var annotationRemove = false;
+
 	
 	var setupAnnotation = function(annotation) {
 		annotation.x = 0;
@@ -114,10 +117,8 @@ var fluid_1_4 = fluid_1_4 || {};
 		}
 	};
 	
-    // Sets mx,my to the mouse position relative to the canvas
-    // unfortunately this can be tricky, we have to worry about padding and borders
-	var getMouse = function (e) {
-	    var element = canvas;
+	var updateOffset = function () {
+		var element = canvas;
 	    offsetX = 0;
 	    offsetY = 0;
 	
@@ -128,14 +129,18 @@ var fluid_1_4 = fluid_1_4 || {};
 	            element = element.offsetParent;
 	        } while (element);
 	    }
-	
+
 	    // Add padding and border style widths to offset
 	    offsetX += stylePaddingLeft;
 	    offsetY += stylePaddingTop;
-	
 	    offsetX += styleBorderLeft;
 	    offsetY += styleBorderTop;
+	};
 	
+    // Sets mx,my to the mouse position relative to the canvas
+    // unfortunately this can be tricky, we have to worry about padding and borders
+	var getMouse = function (e) {
+	    updateOffset();
 	    mx = e.pageX - offsetX;
 	    my = e.pageY - offsetY;
 	};
@@ -153,6 +158,24 @@ var fluid_1_4 = fluid_1_4 || {};
 	    }
 	
 	    context.strokeRect(x, y, w, h);	
+	};
+	
+	
+		
+	var removePreviousAnnotation = function () {
+		if (annotation) {
+			m_container.get()[0].removeChild(annotation);
+			annotation = false;
+		}
+		if (annotationRemove) {
+			m_container.get()[0].removeChild(annotationRemove);
+			annotationRemove = false;
+		}
+	};
+	
+	var drawBackground = function () {
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		drawImage(context, image, resizeFactor);
 	};
 	
 	var updateAnnotationHeight = function (that, newHeight) {
@@ -239,37 +262,8 @@ var fluid_1_4 = fluid_1_4 || {};
 				tagH = my - tagY;
 				tagW = mx - tagX;
 				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
-				/*
-				//var tag = prompt("Enter any tag");
-				if (tag !== null && tag !== "") {
-					
-					if (tagH < 0) {
-						tagY = my;
-						tagH = -tagH;
-					}
-					if (tagW < 0) {
-						tagX = mx;
-						tagW = -tagW;
-					}
-					if (tagW === 0 || tagH === 0) {
-						alert("Error creating tag! Please specify non-zero height and width");
-					} else {
-						addAnnotation(tagX, tagY, tagW, tagH, tag, that);
-						that.events.onAnnotationAdd.fire(annotationList[annotationList.length - 1].tag);
-						that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
-					}
-
-					// Clear the canvas and draw image on canvas
-					context.clearRect(0, 0, canvas.width, canvas.height);
-					drawImage(context, image, resizeFactor);
-				}*/
-				//taggerStarted = false;
-				//taggerMouseMove(e);
 			}
 		};
-	
-		var annotation = false;
-		var annotationRemove = false;
 		
 		var removeAnnotation = function (i) {
 			annotationList.splice(i, 1);
@@ -293,6 +287,28 @@ var fluid_1_4 = fluid_1_4 || {};
 			return annotationRemove;
 		};
 		
+		var showAnnotationAt = function (i) {
+			// Remove previously shown annotation (important when two annotations overlap)
+			removePreviousAnnotation();
+			
+			// Show annotation on mouse over
+			annotation = document.createElement("div");
+			annotation.style.position = 'absolute';
+			annotation.style.top = (offsetY + annotationList[i].y) + "px";
+			annotation.style.left = offsetX + annotationList[i].x + "px";
+			annotation.style.width = annotationList[i].w + 'px';
+			annotation.style.lineHeight = annotationList[i].h + 'px';
+			annotation.className += ' fl-tagger-annotation';
+	
+			annotation.innerHTML = annotationList[i].tag;
+			
+			//Create cross button
+			annotationRemove = createCrossButton(annotationList[i], i);
+			
+			m_container.get()[0].appendChild(annotation);
+			m_container.get()[0].appendChild(annotationRemove);
+		};
+		
 		var annotatedMouseMove = function (e) {
 		    getMouse(e);
 	
@@ -302,56 +318,20 @@ var fluid_1_4 = fluid_1_4 || {};
 				if (mx > annotationList[i].x && mx < annotationList[i].x + annotationList[i].w &&  my > annotationList[i].y && my < annotationList[i].y + annotationList[i].h) {
 					if (i !== prevRectIndex) {
 						prevRectIndex = i;
-						context.clearRect(0, 0, canvas.width, canvas.height);
-						drawImage(context, image, resizeFactor);
-						annotationList[i].draw(context, true);
+						drawBackground();
 						drawAllAnnotations(false);
-						
-						// Remove previously shown annotation (important when two annotations overlap)
-						if (annotation) {
-							m_container.get()[0].removeChild(annotation);
-							annotation = false;
-						}
-						if (annotationRemove) {
-							m_container.get()[0].removeChild(annotationRemove);
-							annotationRemove = false;
-						}
-						
-						// Show annotation on mouse over
-						annotation = document.createElement("div");
-						annotation.style.position = 'absolute';
-						annotation.style.top = (offsetY + annotationList[i].y) + "px";
-						annotation.style.left = offsetX + annotationList[i].x + "px";
-						annotation.style.width = annotationList[i].w + 'px';
-						annotation.style.lineHeight = annotationList[i].h + 'px';
-						annotation.className += ' fl-tagger-annotation';
-	
-						annotation.innerHTML = annotationList[i].tag;
-						
-						//Create cross button
-						annotationRemove = createCrossButton(annotationList[i], i);
-						
-						m_container.get()[0].appendChild(annotation);
-						m_container.get()[0].appendChild(annotationRemove);
+						annotationList[i].draw(context, true);
+						showAnnotationAt(i);
 					}
-					
 					break;
 				}
 			}
 			
 			if (i === l && prevRectIndex !== -1) {
-				context.clearRect(0, 0, canvas.width, canvas.height);
-				drawImage(context, image, resizeFactor);
+				drawBackground();
 				drawAllAnnotations(false);
 				prevRectIndex = -1;
-				if (annotation) {
-					m_container.get()[0].removeChild(annotation);
-					annotation = false;
-				}
-				if (annotationRemove) {
-					m_container.get()[0].removeChild(annotationRemove);
-					annotationRemove = false;
-				}
+				removePreviousAnnotation();
 			}
 		};
 		
@@ -443,27 +423,47 @@ var fluid_1_4 = fluid_1_4 || {};
 			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
 
 			// Clear the canvas and draw image on canvas
-			context.clearRect(0, 0, canvas.width, canvas.height);
-			drawImage(context, image, resizeFactor);
+			drawBackground();
+		};
+		
+		that.deleteTag = function (index) {
+			removeAnnotation(index);
 		};
 		
 		that.doneTagging = function () {
-			canvas.onmousedown = null;
-			canvas.onmouseup = null;
-			canvas.onmousemove = null;
+			if (canvas) {
+				canvas.onmousedown = null;
+				canvas.onmouseup = null;
+				canvas.onmousemove = null;
+			}
 		};
 		
 		that.showAnnotations = function () {
-			context.clearRect(0, 0, canvas.width, canvas.height);
-			drawImage(context, image, resizeFactor);
+			drawBackground();
 			drawAllAnnotations(false);
 			canvas.onmousemove = annotatedMouseMove;
 		};
 		
 		that.hideAnnotations = function () {
-			context.clearRect(0, 0, canvas.width, canvas.height);
-			drawImage(context, image, resizeFactor);
+			drawBackground();
 			canvas.onmousemove = null;
+		};
+		
+		that.highlightTag = function (i) {
+			updateOffset();
+			if (i < annotationList.length) {
+				prevRectIndex = i;
+				drawBackground();
+				drawAllAnnotations(false);
+				
+				annotationList[i].draw(context, true);
+				showAnnotationAt(i);
+			}
+		};
+		
+		that.removeHighlights = function () {
+			removePreviousAnnotation();
+			that.showAnnotations();
 		};
 		
 		that.getNbAnnotations = function () {
@@ -529,14 +529,12 @@ var fluid_1_4 = fluid_1_4 || {};
 					annotationList[i].x = (annotationList[i].x - croppingDimensions.x) * newW / croppingDimensions.w;
 					annotationList[i].y = (annotationList[i].y - croppingDimensions.y) * newH / croppingDimensions.h;
 				} else {
-					annotationList.splice(i, 1);
+					removeAnnotation(i);
 					--l;
 					--i;
 				}
-
 			}
 			that.events.onAnnotationNbChange.fire(annotationList.length, oldLength);
-			
 			HEIGHT = newH;
             WIDTH = newW;
 		};
