@@ -96,7 +96,7 @@ var fluid_1_4 = fluid_1_4 || {};
 		};
 	};
 	
-	//Initialize a new Box and add it
+	//Initialize a new Annotation and add it
 	var addAnnotation = function (x, y, w, h, tag, that) {
 		var newAnnotation = fluid.annotation({
 			fillStyle: that.options.fillStyle,
@@ -388,7 +388,6 @@ var fluid_1_4 = fluid_1_4 || {};
             canvas.onmousedown = taggerMouseDown;
             canvas.onmouseup = taggerMouseUp;
             canvas.onmousemove = taggerMouseMove;
-
         };
         
         that.reset = function () {
@@ -479,18 +478,34 @@ var fluid_1_4 = fluid_1_4 || {};
 		};
 		
 		that.setLocationX = function (newLocationX) {
+			tagX = newLocationX;
+			if (!taggerStarted) {
+				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+			}
 			return that.cropper.setLocationX(newLocationX);
 		};
         
         that.setLocationY = function (newLocationY) {
+        	tagY = newLocationY;
+			if (!taggerStarted) {
+				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+			}
 			return that.cropper.setLocationY(newLocationY);
 		};
 		
 		that.setWidth = function (newWidth, isFixedRatioOn) {
+			tagW = newWidth;
+			if (!taggerStarted) {
+				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+			}
 			return that.cropper.setWidth(newWidth, false);
 		};
 		
 		that.setHeight = function (newHeight, isFixedRatioOn) {
+			tagH = newHeight;
+			if (!taggerStarted) {
+				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+			}
 			return that.cropper.setHeight(newHeight, false);
 		};
 		
