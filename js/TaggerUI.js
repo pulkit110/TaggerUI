@@ -430,11 +430,13 @@ var fluid_1_4 = fluid_1_4 || {};
 		};
 		
 		that.doneTagging = function () {
+			that.cropper.reset(true);
 			if (canvas) {
 				canvas.onmousedown = null;
 				canvas.onmouseup = null;
 				canvas.onmousemove = null;
 			}
+			drawBackground();
 		};
 		
 		that.showAnnotations = function () {
@@ -481,6 +483,7 @@ var fluid_1_4 = fluid_1_4 || {};
 			tagX = newLocationX;
 			if (!taggerStarted) {
 				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+				taggerStarted = true;
 			}
 			return that.cropper.setLocationX(newLocationX);
 		};
@@ -489,6 +492,7 @@ var fluid_1_4 = fluid_1_4 || {};
         	tagY = newLocationY;
 			if (!taggerStarted) {
 				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+				taggerStarted = true;
 			}
 			return that.cropper.setLocationY(newLocationY);
 		};
@@ -497,6 +501,7 @@ var fluid_1_4 = fluid_1_4 || {};
 			tagW = newWidth;
 			if (!taggerStarted) {
 				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+				taggerStarted = true;
 			}
 			return that.cropper.setWidth(newWidth, false);
 		};
@@ -505,6 +510,7 @@ var fluid_1_4 = fluid_1_4 || {};
 			tagH = newHeight;
 			if (!taggerStarted) {
 				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+				taggerStarted = true;
 			}
 			return that.cropper.setHeight(newHeight, false);
 		};
