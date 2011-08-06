@@ -390,6 +390,12 @@ var fluid_1_4 = fluid_1_4 || {};
             canvas.onmousemove = taggerMouseMove;
         };
         
+        that.activateKeyboardAccessibility = function () {
+        	if (that.cropper != null) {
+        		that.cropper.activateKeyboardAccessibility();
+        	}
+        };
+        
         that.reset = function () {
         	var oldLength = annotationList.length;
 			annotationList = [];
@@ -430,13 +436,15 @@ var fluid_1_4 = fluid_1_4 || {};
 		};
 		
 		that.doneTagging = function () {
-			that.cropper.reset(true);
+			if (that.cropper != null) {
+				that.cropper.reset(true);
+			}
 			if (canvas) {
 				canvas.onmousedown = null;
 				canvas.onmouseup = null;
 				canvas.onmousemove = null;
+				drawBackground();
 			}
-			drawBackground();
 		};
 		
 		that.showAnnotations = function () {
