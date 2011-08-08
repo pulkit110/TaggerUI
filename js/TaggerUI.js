@@ -159,8 +159,6 @@ var fluid_1_4 = fluid_1_4 || {};
 	
 	    context.strokeRect(x, y, w, h);	
 	};
-	
-	
 		
 	var removePreviousAnnotation = function () {
 		if (annotation) {
@@ -383,6 +381,8 @@ var fluid_1_4 = fluid_1_4 || {};
 				styleBorderLeft  = parseInt(document.defaultView.getComputedStyle(canvas, null).borderLeftWidth, 10) || 0;
 				styleBorderTop   = parseInt(document.defaultView.getComputedStyle(canvas, null).borderTopWidth, 10)  || 0;
 			}
+			
+			removePreviousAnnotation(); //Remove any previously shown annotations. 
 			
             // Attach the mousedown, mousemove and mouseup event listeners.
             canvas.onmousedown = taggerMouseDown;
