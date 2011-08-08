@@ -426,7 +426,7 @@ var fluid_1_4 = fluid_1_4 || {};
 			addAnnotation(tagX, tagY, tagW, tagH, tagText, that);
 			that.events.onAnnotationAdd.fire(annotationList[annotationList.length - 1].tag);
 			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
-
+			removePreviousAnnotation();
 			// Clear the canvas and draw image on canvas
 			drawBackground();
 		};
