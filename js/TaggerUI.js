@@ -22,38 +22,6 @@ var fluid_1_4 = fluid_1_4 || {};
  *************/
 
 (function ($, fluid) {
-
-	var annotationList = [];
-
-	var canvasElem;
-    var canvas;
-    var context;
-    var WIDTH;
-    var HEIGHT;
-    var resizeFactor;
-    var image;
-    var imageX;
-    var imageY;
-    var taggerStarted;
-    var tagX;
-    var tagY;
-    var tagW;
-    var tagH;
-    var tagText;
-    var m_container;
-
-    var mx, my; // mouse coordinates
-
-	var offsetX, offsetY;
-	
-	var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
-
-	var blurStyle = 'rgba(255,255,255,0.4)';
-	var strokeStyle;
-	var prevRectIndex = -1;
-	var annotation = false;
-	var annotationRemove = false;
-
 	
 	var setupAnnotation = function(annotation) {
 		annotation.x = 0;
@@ -71,7 +39,6 @@ var fluid_1_4 = fluid_1_4 || {};
 	fluid.defaults("fluid.annotation", {
 		gradeNames: ["fluid.littleComponent", "autoInit"],
 		postInitFunction: "fluid.annotation.postInit",
-		//fillStyle: '#444444',
 		strokeStyle: 'white'
 	});
 	
@@ -82,7 +49,7 @@ var fluid_1_4 = fluid_1_4 || {};
 			context.fillStyle = that.options.fillStyle;
 			context.strokeStyle = that.options.strokeStyle;
 			// We can skip the drawing of elements that have moved off the screen:
-			if (that.x > WIDTH || that.y > HEIGHT) {
+			if (that.x > that.WIDTH || that.y > that.HEIGHT) {
 				return;
 			}
 			if (that.x + that.w < 0 || that.y + that.h < 0) {
@@ -107,87 +74,116 @@ var fluid_1_4 = fluid_1_4 || {};
 		newAnnotation.w = w;
 		newAnnotation.h = h;
 		newAnnotation.tag = tag;
-		annotationList.push(newAnnotation);
+		that.annotationList.push(newAnnotation);
 	};
 	
-	var drawAllAnnotations = function (isFilled) {
-		var l = annotationList.length;
+	/**
+	 * Draws the outline of all annotations
+	 */
+	var drawAllAnnotations = function (that, isFilled) {
+		var l = that.annotationList.length;
 		for (var i = 0; i < l; i++) {
-			annotationList[i].draw(context, isFilled);
+			that.annotationList[i].draw(that.context, isFilled);
 		}
 	};
 	
-	var updateOffset = function () {
-		var element = canvas;
-	    offsetX = 0;
-	    offsetY = 0;
+	/**
+	 * Update the offseet for determining mouse location
+	 */
+	var updateOffset = function (that) {
+		var element = that.canvas;
+	    that.offsetX = 0;
+	    that.offsetY = 0;
 	
 	    if (element.offsetParent) {
 	        do {
-	            offsetX += element.offsetLeft;
-	            offsetY += element.offsetTop;
+	            that.offsetX += element.offsetLeft;
+	            that.offsetY += element.offsetTop;
 	            element = element.offsetParent;
 	        } while (element);
 	    }
 
 	    // Add padding and border style widths to offset
-	    offsetX += stylePaddingLeft;
-	    offsetY += stylePaddingTop;
-	    offsetX += styleBorderLeft;
-	    offsetY += styleBorderTop;
+	    that.offsetX += that.stylePaddingLeft;
+	    that.offsetY += that.stylePaddingTop;
+	    that.offsetX += that.styleBorderLeft;
+	    that.offsetY += that.styleBorderTop;
 	};
 	
-    // Sets mx,my to the mouse position relative to the canvas
-    // unfortunately this can be tricky, we have to worry about padding and borders
-	var getMouse = function (e) {
-	    updateOffset();
-	    mx = e.pageX - offsetX;
-	    my = e.pageY - offsetY;
+    /**
+     * Sets mx,my to the mouse position relative to the canvas
+     */
+	var getMouse = function (that, e) {
+	    updateOffset(that);
+	    that.mx = e.pageX - that.offsetX;
+	    that.my = e.pageY - that.offsetY;
 	};
-
-	var drawImage = function (imageCanvasContext, image, resizeFactor) {
+	
+	/**
+	 * Draw Image on the cavnas.
+	 */
+	var drawImage = function (imageCanvasContext, image, resizeFactor, imageX, imageY) {
 		imageCanvasContext.drawImage(image, imageX, imageY, image.width / resizeFactor, image.height / resizeFactor);
 	};
 	
-	var mainDraw = function (x, y, w, h) {	
-		context.clearRect(0, 0, canvas.width, canvas.height);
-		drawImage(context, image, resizeFactor);
-	
+	/**
+	 * The main function that draws all the stuff on canvas
+	 */
+	var mainDraw = function (that, x, y, w, h) {	
+		that.context.clearRect(0, 0, that.canvas.width, that.canvas.height);
+		drawImage(that.context, that.image, that.resizeFactor, that.imageX, that.imageY);
 	    if (!w || !h) {
 	        return;
 	    }
-	
-	    context.strokeRect(x, y, w, h);	
+	    that.context.strokeRect(x, y, w, h);	
 	};
 		
-	var removePreviousAnnotation = function () {
-		if (annotation) {
-			m_container.get()[0].removeChild(annotation);
-			annotation = false;
+	/**
+	 * Remove any previously highlighted annotations.
+	 */
+	var removePreviousAnnotation = function (that) {
+		if (that.currentAnnotation) {
+			that.container.get()[0].removeChild(that.currentAnnotation);
+			that.currentAnnotation = false;
 		}
-		if (annotationRemove) {
-			m_container.get()[0].removeChild(annotationRemove);
-			annotationRemove = false;
+		if (that.annotationRemoveButton) {
+			that.container.get()[0].removeChild(that.annotationRemoveButton);
+			that.annotationRemoveButton = false;
 		}
 	};
 	
-	var drawBackground = function () {
-		context.clearRect(0, 0, canvas.width, canvas.height);
-		drawImage(context, image, resizeFactor);
+	/**
+	 * Draw the background on canvas. This includes clearing the canvas and drawing the background image.  
+	 */
+	var drawBackground = function (that) {
+		that.context.clearRect(0, 0, that.canvas.width, that.canvas.height);
+		drawImage(that.context, that.image, that.resizeFactor, that.imageX, that.imageY);
 	};
 	
+	/**
+	 * Updates the current annotation height. Called when the cropper component is used to resize the annotation. 
+	 */
 	var updateAnnotationHeight = function (that, newHeight) {
 		that.events.onChangeHeight.fire(newHeight);
 	};
 	
+	/**
+	 * Updates the current annotation width. Called when the cropper component is used to resize the annotation. 
+	 */
 	var updateAnnotationWidth = function (that, newWidth) {
 		that.events.onChangeWidth.fire(newWidth);
 	};
 	
+	/**
+	 * Updates the current annotation x coordinate. Called when the cropper component is used to resize the annotation. 
+	 */
 	var updateAnnotationLocationX = function (that, newLocationX) {
 		that.events.onChangeLocationX.fire(newLocationX);
 	};
 	
+	/**
+	 * Updates the current annotation y coordinate. Called when the cropper component is used to resize the annotation. 
+	 */
 	var updateAnnotationLocationY = function (that, newLocationY) {
 		that.events.onChangeLocationY.fire(newLocationY);
 	};
@@ -218,140 +214,147 @@ var fluid_1_4 = fluid_1_4 || {};
 		},
 		lineWidth: 1,
 		strokeStyle: 'white',
-		fillStyle: 'rgba(255,255,255,0.4)'
+		fillStyle: 'rgba(255,255,255,0.4)',
+		blurColor: 'rgba(255,255,255,0.4)'
 	});
     
     fluid.taggerUI.postInit = function(that) {
-    	m_container = that.container;
     	
+    	that.annotationList = [];	// Annotation list that stores all the annotations. 
+    	
+    	/**
+    	 * Mouse handler for building tags. 
+    	 */
     	var taggerMouseDown = function (e) {
-		    getMouse(e);
+		    getMouse(that, e);
 		    
-		    taggerStarted = true;
-		    tagX = mx;
-		    that.events.onChangeLocationX.fire(tagX);
-		    tagY = my;
-		    that.events.onChangeLocationY.fire(tagY);
+		    that.taggerStarted = true;
+		    that.tagX = that.mx;
+		    that.events.onChangeLocationX.fire(that.tagX);
+		    that.tagY = that.my;
+		    that.events.onChangeLocationY.fire(that.tagY);
 		};
-    
+
+		/**
+    	 * Mouse handler for building tags. 
+    	 */
     	var taggerMouseMove = function (e) {
 	    
-		    if (!taggerStarted) {
+		    if (!that.taggerStarted) {
 		        return;
 		    }
-		    getMouse(e);
+		    getMouse(that, e);
 		    
-		    var x = Math.min(mx, tagX);
+		    var x = Math.min(that.mx, that.tagX);
 		    that.events.onChangeLocationX.fire(x);
-			var y = Math.min(my, tagY);
+			var y = Math.min(that.my, that.tagY);
 			that.events.onChangeLocationY.fire(y);
-			var w = Math.abs(mx - tagX);
+			var w = Math.abs(that.mx - that.tagX);
 			that.events.onChangeWidth.fire(w);
 			
-			var h = Math.abs(my - tagY);
+			var h = Math.abs(that.my - that.tagY);
 			that.events.onChangeHeight.fire(h);
 
-			mainDraw(x, y, w, h);	    
+			mainDraw(that, x, y, w, h);	    
 		};
 	
+		/**
+    	 * Mouse handler for building tags. 
+    	 */
 	    var taggerMouseUp = function (e) {
-			getMouse(e);
-			if (taggerStarted) {
-				tagH = my - tagY;
-				tagW = mx - tagX;
-				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
+			getMouse(that, e);
+			if (that.taggerStarted) {
+				that.tagH = that.my - that.tagY;
+				that.tagW = that.mx - that.tagX;
+				that.cropper.init(that.canvas, that.resizeFactor, that.image, that.imageX, that.imageY, that.tagX, that.tagY, that.tagW, that.tagH);
 			}
 		};
 		
+		/**
+		 * Function to remove an annotation 
+		 * @param i - index of the annotation to be removed. 
+		 */
 		var removeAnnotation = function (i) {
-			annotationList.splice(i, 1);
+			that.annotationList.splice(i, 1);
 			that.events.onAnnotationRemove.fire(i);
-			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length + 1);
-			canvasElem.mousemove();
+			that.events.onAnnotationNbChange.fire(that.annotationList.length, that.annotationList.length + 1);
+			$(that.canvas).mousemove();
 		};
 		
+		/**
+		 * Creates the cross button shown on highlighted annotation.
+		 */
 		var createCrossButton = function (box, index) {
-			var annotationRemove = document.createElement("button");
-			annotationRemove.style.position = 'absolute';
-			annotationRemove.style.top = offsetY + box.y + "px";
-			annotationRemove.style.left = offsetX + box.x + box.w - 20 + "px";
-			annotationRemove.className += ' annotation';
-			annotationRemove.className += ' fl-tagger-annotation-action-remove';
+			that.annotationRemoveButton = document.createElement("button");
+			that.annotationRemoveButton.style.position = 'absolute';
+			that.annotationRemoveButton.style.top = that.offsetY + box.y + "px";
+			that.annotationRemoveButton.style.left = that.offsetX + box.x + box.w - 20 + "px";
+			that.annotationRemoveButton.className += ' annotation';
+			that.annotationRemoveButton.className += ' fl-tagger-annotation-action-remove';
 			
-			annotationRemove.onclick = function () {
+			that.annotationRemoveButton.onclick = function () {
 				removeAnnotation(index);
 			};
 			
-			return annotationRemove;
+			return that.annotationRemoveButton;
 		};
 		
+		/**
+		 * Highlights the annotation at index i
+		 * @param i - the index of annotation. 
+		 */
 		var showAnnotationAt = function (i) {
 			// Remove previously shown annotation (important when two annotations overlap)
-			removePreviousAnnotation();
+			removePreviousAnnotation(that);
 			
 			// Show annotation on mouse over
-			annotation = document.createElement("div");
-			annotation.style.position = 'absolute';
-			annotation.style.top = (offsetY + annotationList[i].y) + "px";
-			annotation.style.left = offsetX + annotationList[i].x + "px";
-			annotation.style.width = annotationList[i].w + 'px';
-			annotation.style.lineHeight = annotationList[i].h + 'px';
-			annotation.className += ' fl-tagger-annotation';
+			that.currentAnnotation = document.createElement("div");
+			that.currentAnnotation.style.position = 'absolute';
+			that.currentAnnotation.style.top = (that.offsetY + that.annotationList[i].y) + "px";
+			that.currentAnnotation.style.left = (that.offsetX + that.annotationList[i].x) + "px";
+			that.currentAnnotation.style.width = that.annotationList[i].w + 'px';
+			that.currentAnnotation.style.lineHeight = that.annotationList[i].h + 'px';
+			that.currentAnnotation.className += ' fl-tagger-annotation';
 	
-			annotation.innerHTML = annotationList[i].tag;
+			that.currentAnnotation.innerHTML = that.annotationList[i].tag;
 			
 			//Create cross button
-			annotationRemove = createCrossButton(annotationList[i], i);
+			that.annotationRemoveButton = createCrossButton(that.annotationList[i], i);
 			
-			m_container.get()[0].appendChild(annotation);
-			m_container.get()[0].appendChild(annotationRemove);
+			that.container.get()[0].appendChild(that.currentAnnotation);
+			that.container.get()[0].appendChild(that.annotationRemoveButton);
 		};
 		
+		/**
+    	 * Mouse handler for displaying already existing tags/annotations. 
+    	 */
 		var annotatedMouseMove = function (e) {
-		    getMouse(e);
+		    getMouse(that, e);
 	
-		    var l = annotationList.length;
+		    var l = that.annotationList.length;
 		    var i = 0;
 			for (i = 0; i < l; i++) {
-				if (mx > annotationList[i].x && mx < annotationList[i].x + annotationList[i].w &&  my > annotationList[i].y && my < annotationList[i].y + annotationList[i].h) {
-					if (i !== prevRectIndex) {
-						prevRectIndex = i;
-						drawBackground();
-						drawAllAnnotations(false);
-						annotationList[i].draw(context, true);
+				if (that.mx > that.annotationList[i].x && that.mx < that.annotationList[i].x + that.annotationList[i].w &&  that.my > that.annotationList[i].y && that.my < that.annotationList[i].y + that.annotationList[i].h) {
+					if (i !== that.previousAnnotationIndex) {
+						that.previousAnnotationIndex = i;
+						drawBackground(that);
+						drawAllAnnotations(that, false);
+						that.annotationList[i].draw(that.context, true);
 						showAnnotationAt(i);
 					}
 					break;
 				}
 			}
 			
-			if (i === l && prevRectIndex !== -1) {
-				drawBackground();
-				drawAllAnnotations(false);
-				prevRectIndex = -1;
-				removePreviousAnnotation();
+			if (i === l && that.previousAnnotationIndex !== -1) {
+				drawBackground(that);
+				drawAllAnnotations(that, false);
+				that.previousAnnotationIndex = -1;
+				removePreviousAnnotation(that);
 			}
 		};
 		
-    	that.init = function (a_canvas, a_resizeFactor, a_image, a_imageX, a_imageY) {
-
-			canvasElem = a_canvas;
-            canvas = a_canvas.get()[0];
-            context = canvas.getContext('2d');
-            resizeFactor = a_resizeFactor;
-            image = a_image;
-            imageX = a_imageX;
-            imageY = a_imageY;
-            taggerStarted = false;
-            WIDTH = canvas.width;
-            HEIGHT = canvas.height;
-            
-			strokeStyle = that.options.strokeStyle;
-			context.strokeStyle = strokeStyle;
-			context.lineWidth = that.options.lineWidth;
-			
-			that.cropper = fluid.cropperUI(that.container);
-			
+		var bindComponentEvents = function (that) {
 			that.cropper.events.onChangeHeight.addListener(function (newHeight) {
 				updateAnnotationHeight(that, newHeight);
 			});
@@ -367,205 +370,313 @@ var fluid_1_4 = fluid_1_4 || {};
 			that.cropper.events.onChangeLocationY.addListener(function (newLocationY) {
 				updateAnnotationLocationY(that, newLocationY);
 			});
+		};
 		
+		/**
+		 * Initializes a TaggerUI component. Should be called each time the user wants the tagging to start. 
+		 */
+    	that.init = function (canvas, resizeFactor, image, imageX, imageY) {
+    		
+            that.canvas = canvas.get()[0];
+            that.context = that.canvas.getContext('2d');
+            that.resizeFactor = resizeFactor;
+            that.image = image;
+            that.imageX = imageX;
+            that.imageY = imageY;
+            that.taggerStarted = false;
+            that.WIDTH = that.canvas.width;
+            that.HEIGHT = that.canvas.height;
+            that.previousAnnotationIndex = -1;
+            
+            removePreviousAnnotation(that); //Remove any previously shown annotations.
+            that.currentAnnotation = false;
+			that.annotationRemoveButton = false;
+			
+			that.cropper = fluid.cropperUI(that.container);
+			bindComponentEvents(that);
+			
+			that.context.strokeStyle = that.options.strokeStyle;
+			that.context.lineWidth = that.options.lineWidth;
+
 			//fixes a problem where double clicking causes text to get selected on the canvas
-			canvas.onselectstart = function () {
+			that.canvas.onselectstart = function () {
 				return false;
 			};
 			
 			// fixes mouse co-ordinate problems when there's a border or padding
 			// see getMouse for more detail
 			if (document.defaultView && document.defaultView.getComputedStyle) {
-				stylePaddingLeft = parseInt(document.defaultView.getComputedStyle(canvas, null).paddingLeft, 10)     || 0;
-				stylePaddingTop  = parseInt(document.defaultView.getComputedStyle(canvas, null).paddingTop, 10)      || 0;
-				styleBorderLeft  = parseInt(document.defaultView.getComputedStyle(canvas, null).borderLeftWidth, 10) || 0;
-				styleBorderTop   = parseInt(document.defaultView.getComputedStyle(canvas, null).borderTopWidth, 10)  || 0;
+				that.stylePaddingLeft = parseInt(document.defaultView.getComputedStyle(that.canvas, null).paddingLeft, 10)     || 0;
+				that.stylePaddingTop  = parseInt(document.defaultView.getComputedStyle(that.canvas, null).paddingTop, 10)      || 0;
+				that.styleBorderLeft  = parseInt(document.defaultView.getComputedStyle(that.canvas, null).borderLeftWidth, 10) || 0;
+				that.styleBorderTop   = parseInt(document.defaultView.getComputedStyle(that.canvas, null).borderTopWidth, 10)  || 0;
 			}
 			
-			removePreviousAnnotation(); //Remove any previously shown annotations. 
-			
             // Attach the mousedown, mousemove and mouseup event listeners.
-            canvas.onmousedown = taggerMouseDown;
-            canvas.onmouseup = taggerMouseUp;
-            canvas.onmousemove = taggerMouseMove;
+            that.canvas.onmousedown = taggerMouseDown;
+            that.canvas.onmouseup = taggerMouseUp;
+            that.canvas.onmousemove = taggerMouseMove;
         };
         
+        /**
+         * Function that activates the keyboard accessibility features for cropperUI
+         */
         that.activateKeyboardAccessibility = function () {
         	if (that.cropper != null) {
         		that.cropper.activateKeyboardAccessibility();
         	}
         };
         
+        /**
+         * Reset a taggerUI component.
+         * Removes all the existing tags. 
+         */
         that.reset = function () {
-        	var oldLength = annotationList.length;
-			annotationList = [];
-			if (canvas) {
-				canvas.onmousedown = null;
-				canvas.onmouseup = null;
-				canvas.onmousemove = null;
+        	if (that.annotationList) {
+        		var oldLength = that.annotationList.length;
+				that.annotationList = [];
+				that.events.onAnnotationNbChange.fire(that.annotationList.length, oldLength);
+        	}
+			if (that.canvas) {
+				that.canvas.onmousedown = null;
+				that.canvas.onmouseup = null;
+				that.canvas.onmousemove = null;
 			}
-			that.events.onAnnotationNbChange.fire(annotationList.length, oldLength);
+			
 		};
 		
+		/**
+		 * Confirm the addition of tag. Adds the new tag to the list.
+		 * Also performs cleanup and redraws the background. 
+		 */
 		that.confirmTagAdd = function (tagText) {
 			var croppingReturnValues = that.cropper.reset(true);
 			var tagDimensions = croppingReturnValues[1];
-			tagX = tagDimensions.x;
-			tagY = tagDimensions.y;
-			tagW = tagDimensions.w;
-			tagH = tagDimensions.h;
+			that.tagX = tagDimensions.x;
+			that.tagY = tagDimensions.y;
+			that.tagW = tagDimensions.w;
+			that.tagH = tagDimensions.h;
+			that.tagText = tagText;
 			
-			if (tagH < 0) {
-				tagY = my;
-				tagH = -tagH;
+			if (that.tagH < 0) {
+				that.tagY = that.my;
+				that.tagH = -that.tagH;
 			}
-			if (tagW < 0) {
-				tagX = mx;
-				tagW = -tagW;
+			if (that.tagW < 0) {
+				that.tagX = that.mx;
+				that.tagW = -that.tagW;
 			}
-			addAnnotation(tagX, tagY, tagW, tagH, tagText, that);
-			that.events.onAnnotationAdd.fire(annotationList[annotationList.length - 1].tag);
-			that.events.onAnnotationNbChange.fire(annotationList.length, annotationList.length - 1);
-			removePreviousAnnotation();
+			addAnnotation(that.tagX, that.tagY, that.tagW, that.tagH, that.tagText, that);
+			that.events.onAnnotationAdd.fire(that.annotationList[that.annotationList.length - 1].tag);
+			that.events.onAnnotationNbChange.fire(that.annotationList.length, that.annotationList.length - 1);
+			removePreviousAnnotation(that);
 			// Clear the canvas and draw image on canvas
-			drawBackground();
+			drawBackground(that);
 		};
 		
+		/**
+		 * Delete tag at gicen index. 
+		 * @param index - the index of tag to be deleted.  
+		 */
 		that.deleteTag = function (index) {
 			removeAnnotation(index);
 		};
 		
+		/**
+		 * Indicate the completion of a tagging session. 
+		 * Doesn't affect the given tags. Just performs cleanup and redraws the background. 
+		 * If you want to reset the tagger component and delete all the existing tags, use reset instead.
+		 */
 		that.doneTagging = function () {
 			if (that.cropper != null) {
 				that.cropper.reset(true);
 			}
-			if (canvas) {
-				canvas.onmousedown = null;
-				canvas.onmouseup = null;
-				canvas.onmousemove = null;
-				drawBackground();
+			if (that.canvas) {
+				that.canvas.onmousedown = null;
+				that.canvas.onmouseup = null;
+				that.canvas.onmousemove = null;
+				drawBackground(that);
 			}
 		};
 		
+		/**
+		 * Show all the annotations. Also associate the mouse handlers for annotations.  
+		 */
 		that.showAnnotations = function () {
-			drawBackground();
-			drawAllAnnotations(false);
-			canvas.onmousemove = annotatedMouseMove;
+			drawBackground(that);
+			drawAllAnnotations(that, false);
+			that.canvas.onmousemove = annotatedMouseMove;
 		};
 		
+		/**
+		 * Hides all the annotations and unbinds the mouse handlers.
+		 */
 		that.hideAnnotations = function () {
-			drawBackground();
-			canvas.onmousemove = null;
+			drawBackground(that);
+			that.canvas.onmousemove = null;
 		};
 		
+		/**
+		 * Highlight the annotation/tag at index i
+		 * @param i- index of the annotation to be highlighted. 
+		 */
 		that.highlightTag = function (i) {
-			updateOffset();
-			if (i < annotationList.length) {
-				prevRectIndex = i;
-				drawBackground();
-				drawAllAnnotations(false);
+			updateOffset(that);
+			if (i < that.annotationList.length) {
+				that.previousAnnotationIndex = i;
+				drawBackground(that);
+				drawAllAnnotations(that, false);
 				
-				annotationList[i].draw(context, true);
+				that.annotationList[i].draw(that.context, true);
 				showAnnotationAt(i);
 			}
 		};
 		
+		/**
+		 * Removes all existing highlights. 
+		 */
 		that.removeHighlights = function () {
-			removePreviousAnnotation();
+			removePreviousAnnotation(that);
 			that.showAnnotations();
 		};
 		
+		/**
+		 * Returns the number of annotations. 
+		 */
 		that.getNbAnnotations = function () {
-			return annotationList.length;
+			if (that.annotationList) {
+				return that.annotationList.length;
+			}
+			return 0;
 		};
 		
+		/**
+		 * Returns the complete list of all the tags.
+		 */
 		that.getTagList = function () {
-			var tagList = new Array(annotationList.length);
-			for (var i = 0; i < annotationList.length; ++i) {
-				tagList[i] = annotationList[i].tag;
+			var tagList = new Array(that.annotationList.length);
+			for (var i = 0; i < that.annotationList.length; ++i) {
+				tagList[i] = that.annotationList[i].tag;
 			}
 			return tagList;
 		};
 		
+		/**
+		 * Set the x coordinate of current tag.
+		 */
 		that.setLocationX = function (newLocationX) {
-			tagX = newLocationX;
-			if (!taggerStarted) {
-				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
-				taggerStarted = true;
+			that.tagX = newLocationX;
+			if (!that.taggerStarted) {
+				that.cropper.init(that.canvas, that.resizeFactor, that.image, that.imageX, that.imageY, that.tagX, that.tagY, that.tagW, that.tagH);
+				that.taggerStarted = true;
 			}
 			return that.cropper.setLocationX(newLocationX);
 		};
         
+        /**
+		 * Set the y coordinate of current tag.
+		 */
         that.setLocationY = function (newLocationY) {
-        	tagY = newLocationY;
-			if (!taggerStarted) {
-				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
-				taggerStarted = true;
+        	that.tagY = newLocationY;
+			if (!that.taggerStarted) {
+				that.cropper.init(that.canvas, that.resizeFactor, that.image, that.imageX, that.imageY, that.tagX, that.tagY, that.tagW, that.tagH);
+				that.taggerStarted = true;
 			}
 			return that.cropper.setLocationY(newLocationY);
 		};
 		
+		/**
+		 * Set the width of current tag.
+		 */
 		that.setWidth = function (newWidth, isFixedRatioOn) {
-			tagW = newWidth;
-			if (!taggerStarted) {
-				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
-				taggerStarted = true;
+			that.tagW = newWidth;
+			if (!that.taggerStarted) {
+				that.cropper.init(that.canvas, that.resizeFactor, that.image, that.imageX, that.imageY, that.tagX, that.tagY, that.tagW, that.tagH);
+				that.taggerStarted = true;
 			}
 			return that.cropper.setWidth(newWidth, false);
 		};
 		
+		/**
+		 * Set the height of current tag.
+		 */
 		that.setHeight = function (newHeight, isFixedRatioOn) {
-			tagH = newHeight;
-			if (!taggerStarted) {
-				that.cropper.init(canvas, resizeFactor, image, imageX, imageY, tagX, tagY, tagW, tagH);
-				taggerStarted = true;
+			that.tagH = newHeight;
+			if (!that.taggerStarted) {
+				that.cropper.init(that.canvas, that.resizeFactor, that.image, that.imageX, that.imageY, that.tagX, that.tagY, that.tagW, that.tagH);
+				that.taggerStarted = true;
 			}
 			return that.cropper.setHeight(newHeight, false);
 		};
 		
-		that.adjustTagsForResize = function (newW, newH, a_resizeFactor, a_image, a_imageX, a_imageY) {
-			image = a_image;
-			resizeFactor = a_resizeFactor;
-			imageX = a_imageX;
-			imageY = a_imageY;
+		/**
+		 * Function that automatically adjusts tags when the image has been resized. 
+		 * It automatically reduces/increases the size of the tags to reflect the new size. 
+		 * @param newW - new width of the image.
+		 * @param newH - new height of the image.
+		 * @param resizeFactor - the ratio by which the image has been resized to fit the canvas
+		 * @param image - the new resized image
+		 * @param imageX - the new starting x coordinate of image
+		 * @param imageY - the new starting y coordinate of image   
+		 */
+		that.adjustTagsForResize = function (newW, newH, resizeFactor, image, imageX, imageY) {
+			that.image = image;
+			that.resizeFactor = resizeFactor;
+			that.imageX = imageX;
+			that.imageY = imageY;
 			
-		    var l = annotationList.length;
+		    var l = that.annotationList.length;
 		    var i = 0;
 			for (i = 0; i < l; i++) {
-				annotationList[i].w *= newW / WIDTH;
-				annotationList[i].h *= newH / HEIGHT;
-				annotationList[i].x *= newW / WIDTH;
-				annotationList[i].y *= newH / HEIGHT;
+				that.annotationList[i].w *= newW / that.WIDTH;
+				that.annotationList[i].h *= newH / that.HEIGHT;
+				that.annotationList[i].x *= newW / that.WIDTH;
+				that.annotationList[i].y *= newH / that.HEIGHT;
 			}
 			
-			HEIGHT = newH;
-            WIDTH = newW;
+			that.HEIGHT = newH;
+            that.WIDTH = newW;
 		};
 		
-		that.adjustTagsForCrop = function (newW, newH, a_resizeFactor, a_image, a_imageX, a_imageY, croppingDimensions) {
-			image = a_image;
-			resizeFactor = a_resizeFactor;
-			imageX = a_imageX;
-			imageY = a_imageY;
-			var oldLength = annotationList.length; 
-		    var l = annotationList.length;
+		/**
+		 * Function that automatically adjusts tags when the image has been cropped. 
+		 * It automatically discards all the tags that were outside the cropping dimensions.  
+		 * @param newW - new width of the image.
+		 * @param newH - new height of the image.
+		 * @param resizeFactor - the ratio by which the image has been resized to fit the canvas
+		 * @param image - the new resized image
+		 * @param imageX - the new starting x coordinate of image
+		 * @param imageY - the new starting y coordinate of image   
+		 * @param croppingDimensions - an object that stores the dimensions of the cropping bounding box. This should contain 4 fields:
+		 * 									x - the x coordinate of the bounding box
+		 * 									y - the y coordinate of the bounding box
+		 * 									w - the width of the bounding box
+		 * 									h - the height of the bounding box
+		 */
+		that.adjustTagsForCrop = function (newW, newH, resizeFactor, image, imageX, imageY, croppingDimensions) {
+			that.image = image;
+			that.resizeFactor = resizeFactor;
+			that.imageX = imageX;
+			that.imageY = imageY;
+			var oldLength = that.annotationList.length; 
+		    var l = that.annotationList.length;
 		    var i = 0;
 			for (i = 0; i < l; i++) {
-				if (annotationList[i].x >= croppingDimensions.x && annotationList[i].x + annotationList[i].w <= croppingDimensions.x + croppingDimensions.w &&
-						annotationList[i].y >= croppingDimensions.y && annotationList[i].y + annotationList[i].h <= croppingDimensions.y + croppingDimensions.h) {
-					annotationList[i].w *= newW / croppingDimensions.w;
-					annotationList[i].h *= newH / croppingDimensions.h;
-					annotationList[i].x = (annotationList[i].x - croppingDimensions.x) * newW / croppingDimensions.w;
-					annotationList[i].y = (annotationList[i].y - croppingDimensions.y) * newH / croppingDimensions.h;
+				if (that.annotationList[i].x >= croppingDimensions.x && that.annotationList[i].x + that.annotationList[i].w <= croppingDimensions.x + croppingDimensions.w &&
+						that.annotationList[i].y >= croppingDimensions.y && that.annotationList[i].y + that.annotationList[i].h <= croppingDimensions.y + croppingDimensions.h) {
+					that.annotationList[i].w *= newW / croppingDimensions.w;
+					that.annotationList[i].h *= newH / croppingDimensions.h;
+					that.annotationList[i].x = (that.annotationList[i].x - croppingDimensions.x) * newW / croppingDimensions.w;
+					that.annotationList[i].y = (that.annotationList[i].y - croppingDimensions.y) * newH / croppingDimensions.h;
 				} else {
 					removeAnnotation(i);
 					--l;
 					--i;
 				}
 			}
-			that.events.onAnnotationNbChange.fire(annotationList.length, oldLength);
-			HEIGHT = newH;
-            WIDTH = newW;
+			that.events.onAnnotationNbChange.fire(that.annotationList.length, oldLength);
+			that.HEIGHT = newH;
+            that.WIDTH = newW;
 		};
     };
     
