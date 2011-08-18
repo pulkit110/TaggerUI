@@ -354,6 +354,8 @@ var fluid_1_4 = fluid_1_4 || {};
 		 */
 		that.init = function (canvas, resizeFactor, image, imageX, imageY) {
 
+			that.newTagStarted = true;
+			
 			that.canvas = canvas.get()[0];
 			that.context = that.canvas.getContext('2d');
 			that.resizeFactor = resizeFactor;
@@ -406,6 +408,7 @@ var fluid_1_4 = fluid_1_4 || {};
 		 * Removes all the existing tags.
 		 */
 		that.reset = function () {
+			that.newTagStarted = false;
 			if (that.annotationList) {
 				var oldLength = that.annotationList.length;
 				that.annotationList = [];
@@ -423,6 +426,7 @@ var fluid_1_4 = fluid_1_4 || {};
 		 * Also performs cleanup and redraws the background.
 		 */
 		that.confirmTagAdd = function (tagText) {
+			that.newTagStarted = false;
 			var croppingReturnValues = that.cropper.reset(true);
 			var tagDimensions = croppingReturnValues[1];
 			that.tagX = tagDimensions.x;
@@ -459,7 +463,9 @@ var fluid_1_4 = fluid_1_4 || {};
 		 * If you want to reset the tagger component and delete all the existing tags, use reset instead.
 		 */
 		that.doneTagging = function () {
-			if (that.cropper !== null) {
+			that.newTagStarted = false;
+			
+			if (that.cropper != null) {
 				that.cropper.reset(true);
 			}
 			if (that.canvas) {
@@ -489,6 +495,9 @@ var fluid_1_4 = fluid_1_4 || {};
 		 * @param i- index of the annotation to be highlighted.
 		 */
 		that.highlightTag = function (i) {
+			if (that.newTagStarted) {
+				return;
+			}
 			updateOffset(that);
 			if (i < that.annotationList.length) {
 				that.previousAnnotationIndex = i;
@@ -504,6 +513,9 @@ var fluid_1_4 = fluid_1_4 || {};
 		 */
 		that.removeHighlights = function () {
 			removePreviousAnnotation(that);
+			if (that.newTagStarted) {
+				return;
+			}
 			that.showAnnotations();
 		};
 		/**
