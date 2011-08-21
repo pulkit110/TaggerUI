@@ -426,7 +426,6 @@ var fluid_1_4 = fluid_1_4 || {};
 		 * Also performs cleanup and redraws the background.
 		 */
 		that.confirmTagAdd = function (tagText) {
-			that.newTagStarted = false;
 			var croppingReturnValues = that.cropper.reset(true);
 			var tagDimensions = croppingReturnValues[1];
 			that.tagX = tagDimensions.x;
@@ -447,8 +446,8 @@ var fluid_1_4 = fluid_1_4 || {};
 			that.events.onAnnotationAdd.fire(that.annotationList[that.annotationList.length - 1].tag);
 			that.events.onAnnotationNbChange.fire(that.annotationList.length, that.annotationList.length - 1);
 			removePreviousAnnotation(that);
-			// Clear the canvas and draw image on canvas
-			drawBackground(that);
+			
+			that.doneTagging();
 		};
 		/**
 		 * Delete tag at gicen index.
