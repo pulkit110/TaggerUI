@@ -189,9 +189,6 @@ var fluid_1_4 = fluid_1_4 || {};
 		styles: {
 			remove: "fl-image-editor-annotation-action-remove"
 		},
-		status: {
-			remove: "Press Delete key to remove annotation"
-		},
 		events: {
 			onAnnotationNbChange: null,
 			onAnnotationAdd: null,
@@ -401,6 +398,14 @@ var fluid_1_4 = fluid_1_4 || {};
 		that.activateKeyboardAccessibility = function () {
 			if (that.cropper !== null) {
 				that.cropper.activateKeyboardAccessibility();
+			}
+		};
+		/**
+		 * Function that activates the keyboard accessibility features for cropperUI
+		 */
+		that.deactivateKeyboardAccessibility = function () {
+			if (that.cropper !== null) {
+				that.cropper.deactivateKeyboardAccessibility();
 			}
 		};
 		/**
